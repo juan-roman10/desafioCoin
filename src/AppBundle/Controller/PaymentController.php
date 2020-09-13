@@ -108,6 +108,51 @@ class PaymentController extends FOSRestController
     }
 
     /**
+     * @Route("/payments/{id}", name="update_payments")
+     * @Method("PATCH")
+     */
+    public function updateAction($id,Request $request){
+        $status = $this->getDoctrine()->getRepository(Status::class)->findOneBy(['name' => $request->get("status")]);
+        if ($status == NULL) {
+            $response = [
+                "Code" => 400,
+                "Message" => "Error validating fields: status does not exist"
+            ];
+            return new JsonResponse($response, 400);
+        }
+
+        $em = $this->getDoctrine()->getManager();
+        $payment = $this->getDoctrine()->getRepository(Payment::class)->find($id);
+        if ($payment == NULL) {
+            $response = [
+                "Code" => 400,
+                "Message" => "Error validating fields: payment does not exist"
+            ];
+            return new JsonResponse($response, 400);
+        }
+        $payment->setStatusId($status->getId());
+        $em->flush();
+
+        $payment_method = $this->getDoctrine()->getRepository(Payment_Method::class)->findOneBy(['id' => $payment->getPaymentMethodId()]);
+        $company = $this->getDoctrine()->getRepository(Company::class)->findOneBy(['id' => $payment->getCompanyId()]);
+        $date = $payment->getPaymentDate();
+
+            $response = [
+                "id" => $payment->getId(),
+                "payment_date" => $date->format('Y-m-d\TH:i:sP'),
+                "company" => $company->getName(),
+                "amount" => $payment->getAmount(),
+                "payment_method" => $payment_method->getName(),
+                "external_reference" => $payment->getExternalReference(),
+                "terminal" => $payment->getTerminal(),
+                "status" => $status->getName(),
+                "reference" => $payment->getReference()
+            ];
+
+            return new JsonResponse($response, 200);        
+    }
+
+    /**
      * @Route("/payments", name="get_payments")
      * @Method("GET")
      */
