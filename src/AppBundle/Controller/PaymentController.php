@@ -60,7 +60,7 @@ class PaymentController extends FOSRestController
             ];
             return new JsonResponse($response, 400);
         }
-
+        
         $payment = new Payment(); 
         $payment->setPaymentDate($payment_date);
         $payment->setCompanyId($company->getId());
@@ -97,7 +97,13 @@ class PaymentController extends FOSRestController
                 "Message" => "Error validating fields: external_reference already exists"
             ];
             return new JsonResponse($response, 400);
-        }        
+        } catch (\Doctrine\DBAL\Exception\NotNullConstraintViolationException $ex) {
+            $response = [
+                "Code" => 400,
+                "Message" => "Error validating fields: all fields are obligatories"
+            ];
+            return new JsonResponse($response, 400);
+        }         
         die();
     }
 
