@@ -22,9 +22,9 @@ class Payment
     private $id;
 
     /**
-     * @var string
+     * @var \DateTime
      *
-     * @ORM\Column(name="payment_date", type="string", length=255)
+     * @ORM\Column(name="payment_date", type="datetimetz")
      */
     private $paymentDate;
 
@@ -91,7 +91,7 @@ class Payment
     /**
      * Set paymentDate
      *
-     * @param string $paymentDate
+     * @param \DateTime $paymentDate
      *
      * @return Payment
      */
@@ -105,7 +105,7 @@ class Payment
     /**
      * Get paymentDate
      *
-     * @return string
+     * @return \DateTime
      */
     public function getPaymentDate()
     {

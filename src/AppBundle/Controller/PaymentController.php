@@ -51,8 +51,18 @@ class PaymentController extends FOSRestController
             return new JsonResponse($response, 400);
         }
 
+        try {
+            $payment_date = new \DateTime($request->get("payment_date"));
+        } catch (\Exception $e) {
+            $response = [
+                "Code" => 400,
+                "Message" => "Error validating fields: payment_date is invalid"
+            ];
+            return new JsonResponse($response, 400);
+        }
+
         $payment = new Payment(); 
-        $payment->setPaymentDate($request->get("payment_date"));
+        $payment->setPaymentDate($payment_date);
         $payment->setCompanyId($company->getId());
         $payment->setAmount($request->get("amount"));
         $payment->setPaymentMethodId($payment_method->getId());
@@ -66,9 +76,11 @@ class PaymentController extends FOSRestController
             $em->persist($payment);
             $em->flush();
 
+            $date = $payment->getPaymentDate();
+
             $response = [
                 "id" => $payment->getId(),
-                "payment_date" => $payment->getPaymentDate(),
+                "payment_date" => $date->format('Y-m-d\TH:i:sP'),
                 "company" => $company->getName(),
                 "amount" => $payment->getAmount(),
                 "payment_method" => $payment_method->getName(),
