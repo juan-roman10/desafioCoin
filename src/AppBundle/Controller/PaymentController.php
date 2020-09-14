@@ -158,22 +158,95 @@ class PaymentController extends FOSRestController
      */
     public function getAction(Request $request)
     {
-        $repository = $this->getDoctrine()->getRepository(Payment::class);
-        $payments = $repository->findAll();
-
-        if (!$payments) {
-            return new Response('No hay pagos', 400);
-        } else {
-
-            $pagos = array();
-            foreach ($payments as $payment) {
-                $pagos[] = $payment->getExternalReference();
+        if (null !== $request->get("payment_method")) {    
+            $payment_method = $this->getDoctrine()->getRepository(Payment_Method::class)->findOneBy(['name' => $request->get("payment_method")]);
+            if ($payment_method == NULL) {
+                $response = [
+                    "Code" => 400,
+                    "Message" => "Error validating fields: payment_method does not exist"
+                ];
+                return new JsonResponse($response, 400);
             }
+            $payment_method_id = $payment_method->getId();
+        } else {
+            $payment_method_id = null;
+        }
 
-            return new JsonResponse($pagos, 200);
+        if (null !== $request->get("company")) {
+            $company = $this->getDoctrine()->getRepository(Company::class)->findOneBy(['name' => $request->get("company")]);
+            if ($company == NULL) {
+                $response = [
+                    "Code" => 400,
+                    "Message" => "Error validating fields: Company does not exist"
+                ];
+                return new JsonResponse($response, 400);
+            }
+            $company_id = $company->getId();
+        } else {
+            $company_id = null;
         }
         
-        die();
+        if (null !== $request->get("payment_date_from")) {
+            try {
+                $payment_date_from = new \DateTime($request->get("payment_date_from"));
+                $payment_date_from = $payment_date_from->format('Y-m-d\TH:i:sP');
+            } catch (\Exception $e) {
+                $response = [
+                    "Code" => 400,
+                    "Message" => "Error validating fields: payment_date is invalid"
+                ];
+                return new JsonResponse($response, 400);
+            }
+        } else {
+            $payment_date_from = null;
+        }
+        
+
+        if (null !== $request->get("payment_date_until")) {
+            try {
+                $payment_date_until = new \DateTime($request->get("payment_date_until"));
+                $payment_date_until = $payment_date_until->format('Y-m-d\TH:i:sP');
+            } catch (\Exception $e) {
+                $response = [
+                    "Code" => 400,
+                    "Message" => "Error validating fields: payment_date is invalid"
+                ];
+                return new JsonResponse($response, 400);
+            }
+        } else {
+            $payment_date_until = null;
+        }
+
+        $payments = $this->getDoctrine()->getRepository(Payment::class);
+        $payments = $payments->findWithAllFilters($payment_method_id, $company_id, $payment_date_from, $payment_date_until);
+
+        $data = array();
+
+        foreach ($payments as $payment) {
+            $date = $payment->getPaymentDate();
+            $status = $this->getDoctrine()->getRepository(Status::class)->findOneBy(['id' => $payment->getStatusId()]);
+            $company = $this->getDoctrine()->getRepository(Company::class)->findOneBy(['id' => $payment->getCompanyId()]);
+            $payment_method = $this->getDoctrine()->getRepository(Payment_Method::class)->findOneBy(['id' => $payment->getPaymentMethodId()]);
+            $pago = array(
+                "id" => $payment->getId(),
+                "payment_date" => $date->format('Y-m-d\TH:i:sP'),
+                "company" => $company->getName(),
+                "amount" => $payment->getAmount(),
+                "payment_method" => $payment_method->getName(),
+                "external_reference" => $payment->getExternalReference(),
+                "terminal" => $payment->getTerminal(),
+                "status" => $status->getName(),
+                "reference" => $payment->getReference()
+            );
+            array_push($data, $pago);
+        }
+
+        $response = [
+            "total_items" => 1,
+            "data" => $data
+        ];
+
+        return new JsonResponse($response, 200);
     }
 
     
