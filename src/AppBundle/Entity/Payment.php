@@ -29,11 +29,10 @@ class Payment
     private $paymentDate;
 
     /**
-     * @var int
-     *
-     * @ORM\Column(name="company_id", type="integer")
+     * @var Company
+     * @ORM\ManyToOne(targetEntity="Company")
      */
-    private $companyId;
+    private $company;
 
     /**
      * @var int
@@ -43,11 +42,10 @@ class Payment
     private $amount;
 
     /**
-     * @var int
-     *
-     * @ORM\Column(name="payment_method_id", type="integer")
+     * @var Payment_Method
+     * @ORM\ManyToOne(targetEntity="Payment_Method")
      */
-    private $paymentMethodId;
+    private $paymentMethod;
 
     /**
      * @var string
@@ -64,11 +62,10 @@ class Payment
     private $terminal;
 
     /**
-     * @var int
-     *
-     * @ORM\Column(name="status_id", type="integer")
+     * @var Status
+     * @ORM\ManyToOne(targetEntity="Status")
      */
-    private $statusId;
+    private $status;
 
     /**
      * @var string
@@ -113,27 +110,26 @@ class Payment
     }
 
     /**
-     * Set companyId
+     * Set company
      *
-     * @param integer $companyId
-     *
-     * @return Payment
+     * @param Company $company
+     * @return Company
      */
-    public function setCompanyId($companyId)
+    public function setCompany($company)
     {
-        $this->companyId = $companyId;
+        $this->company = $company;
 
         return $this;
     }
 
     /**
-     * Get companyId
+     * Get company
      *
-     * @return int
+     * @return Company
      */
-    public function getCompanyId()
+    public function getCompany()
     {
-        return $this->companyId;
+        return $this->company;
     }
 
     /**
@@ -161,27 +157,26 @@ class Payment
     }
 
     /**
-     * Set paymentMethodId
+     * Set paymentMethod
      *
-     * @param integer $paymentMethodId
-     *
-     * @return Payment
+     * @param Payment_Method $paymentMethod
+     * @return Payment_Method
      */
-    public function setPaymentMethodId($paymentMethodId)
+    public function setPaymentMethod($paymentMethod)
     {
-        $this->paymentMethodId = $paymentMethodId;
+        $this->paymentMethod = $paymentMethod;
 
         return $this;
     }
 
     /**
-     * Get paymentMethodId
+     * Get paymentMethod
      *
-     * @return int
+     * @return Payment_Method
      */
-    public function getPaymentMethodId()
+    public function getPaymentMethod()
     {
-        return $this->paymentMethodId;
+        return $this->paymentMethod;
     }
 
     /**
@@ -235,13 +230,12 @@ class Payment
     /**
      * Set statusId
      *
-     * @param integer $statusId
-     *
-     * @return Payment
+     * @param Status $status
+     * @return Status
      */
-    public function setStatusId($statusId)
+    public function setStatus($status)
     {
-        $this->statusId = $statusId;
+        $this->status = $status;
 
         return $this;
     }
@@ -249,11 +243,11 @@ class Payment
     /**
      * Get statusId
      *
-     * @return int
+     * @return Status
      */
-    public function getStatusId()
+    public function getStatus()
     {
-        return $this->statusId;
+        return $this->status;
     }
 
     /**
