@@ -3,6 +3,7 @@
 namespace AppBundle\Repository;
 
 use AppBundle\Entity\Payment;
+use AppBundle\Entity\Payment_Method;
 use Doctrine\Common\Collections\Expr\Comparison;
 
 /**
@@ -14,7 +15,7 @@ use Doctrine\Common\Collections\Expr\Comparison;
 class PaymentRepository extends \Doctrine\ORM\EntityRepository
 {
 
-    public function findWithAllFilters($payment_method, $company, $payment_date_from, $payment_date_until): array
+    public function findWithAllFilters($paymentMethod, $company, $payment_date_from, $payment_date_until): array
     {
         $qb = $this->createQueryBuilder('p');
 
@@ -28,13 +29,13 @@ class PaymentRepository extends \Doctrine\ORM\EntityRepository
             ->setParameters(array('from' => $payment_date_from, 'to' => $payment_date_until)); 
         }
         
-        if ($payment_method) {
-            $wherePMethod = 'p.paymentMethodId = '.$payment_method;
+        if ($paymentMethod) {            
+            $wherePMethod = 'p.paymentMethod = '.$paymentMethod;
             $qb->andWhere($wherePMethod);
         }
 
-        if ($company) {
-            $whereCompany = 'p.companyId = '.$company;
+        if ($company) {            
+            $whereCompany = 'p.company = '.$company;
             $qb->andWhere($whereCompany); 
         }
 

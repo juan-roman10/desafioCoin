@@ -6,7 +6,9 @@ use AppBundle\Entity\Status;
 use AppBundle\Entity\Company;
 use AppBundle\Entity\Payment;
 use FOS\RestBundle\View\View;
+use AppBundle\Form\PaymentType;
 use AppBundle\Entity\Payment_Method;
+use JMS\Serializer\SerializerBuilder;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use FOS\RestBundle\Controller\FOSRestController;
@@ -18,92 +20,62 @@ use Sensio\Bundle\FrameworkExtraBundle\Configuration\Method;
 
 class PaymentController extends FOSRestController
 {
+
     /**
      * @Route("/payments", name="create_payments")
      * @Method("POST")
      */
     public function createAction(Request $request)
     {
-        $company = $this->getDoctrine()->getRepository(Company::class)->findOneBy(['name' => $request->get("company")]);
-        if ($company == NULL) {
-            $response = [
-                "Code" => 400,
-                "Message" => "Error validating fields: Company does not exist"
-            ];
-            return new JsonResponse($response, 400);
+        $data = json_decode($request->getContent(), true);
+
+        $form = $this->createForm(PaymentType::class);
+        $form->submit($data);
+        $form->handleRequest($request);
+        if ($form->isSubmitted() && $form->isValid()) {
+            $payment = $form->getData();
+
+            try {
+                $em = $this->getDoctrine()->getManager();
+                $em->persist($payment);
+                $em->flush();
+    
+                $date = $payment->getPaymentDate();
+    
+                $response = [
+                    "id" => $payment->getId(),
+                    "payment_date" => $date->format('Y-m-d\TH:i:sP'),
+                    "company" => $payment->getCompany()->getName(),
+                    "amount" => $payment->getAmount(),
+                    "payment_method" => $payment->getPaymentMethod()->getName(),
+                    "external_reference" => $payment->getExternalReference(),
+                    "terminal" => $payment->getTerminal(),
+                    "status" => $payment->getStatus()->getName(),
+                    "reference" => $payment->getReference()
+                ];
+
+                $serializer = SerializerBuilder::create()->build();
+                $jsonContent = $serializer->serialize($response, 'json');
+    
+                return new Response($jsonContent, 200);
+            } catch (\Doctrine\DBAL\Exception\UniqueConstraintViolationException $ex) {
+                $response = [
+                    "Code" => 400,
+                    "Message" => "Error validating fields: external_reference already exists"
+                ];
+                return new JsonResponse($response, 400);
+            } catch (\Doctrine\DBAL\Exception\NotNullConstraintViolationException $ex) {
+                $response = [
+                    "Code" => 400,
+                    "Message" => "Error validating fields: all fields are obligatories"
+                ];
+                return new JsonResponse($response, 400);
+            }  
+
+        } else {
+            $string = (string) $form->getErrors(true, false);
+            dump($string);
         }
-
-        $payment_method = $this->getDoctrine()->getRepository(Payment_Method::class)->findOneBy(['name' => $request->get("payment_method")]);
-        if ($payment_method == NULL) {
-            $response = [
-                "Code" => 400,
-                "Message" => "Error validating fields: payment_method does not exist"
-            ];
-            return new JsonResponse($response, 400);
-        }
-        
-        $status = $this->getDoctrine()->getRepository(Status::class)->findOneBy(['name' => $request->get("status")]);
-        if ($status == NULL) {
-            $response = [
-                "Code" => 400,
-                "Message" => "Error validating fields: status does not exist"
-            ];
-            return new JsonResponse($response, 400);
-        }
-
-        try {
-            $payment_date = new \DateTime($request->get("payment_date"));
-        } catch (\Exception $e) {
-            $response = [
-                "Code" => 400,
-                "Message" => "Error validating fields: payment_date is invalid"
-            ];
-            return new JsonResponse($response, 400);
-        }
-        
-        $payment = new Payment(); 
-        $payment->setPaymentDate($payment_date);
-        $payment->setCompanyId($company->getId());
-        $payment->setAmount($request->get("amount"));
-        $payment->setPaymentMethodId($payment_method->getId());
-        $payment->setExternalReference($request->get("external_reference"));
-        $payment->setTerminal($request->get("terminal"));
-        $payment->setStatusId($status->getId());
-        $payment->setReference($request->get("reference"));
-
-        try {
-            $em = $this->getDoctrine()->getManager();
-            $em->persist($payment);
-            $em->flush();
-
-            $date = $payment->getPaymentDate();
-
-            $response = [
-                "id" => $payment->getId(),
-                "payment_date" => $date->format('Y-m-d\TH:i:sP'),
-                "company" => $company->getName(),
-                "amount" => $payment->getAmount(),
-                "payment_method" => $payment_method->getName(),
-                "external_reference" => $payment->getExternalReference(),
-                "terminal" => $payment->getTerminal(),
-                "status" => $status->getName(),
-                "reference" => $payment->getReference()
-            ];
-
-            return new JsonResponse($response, 200);
-        } catch (\Doctrine\DBAL\Exception\UniqueConstraintViolationException $ex) {
-            $response = [
-                "Code" => 400,
-                "Message" => "Error validating fields: external_reference already exists"
-            ];
-            return new JsonResponse($response, 400);
-        } catch (\Doctrine\DBAL\Exception\NotNullConstraintViolationException $ex) {
-            $response = [
-                "Code" => 400,
-                "Message" => "Error validating fields: all fields are obligatories"
-            ];
-            return new JsonResponse($response, 400);
-        }         
         die();
     }
 
@@ -111,45 +83,42 @@ class PaymentController extends FOSRestController
      * @Route("/payments/{id}", name="update_payments")
      * @Method("PATCH")
      */
-    public function updateAction($id,Request $request){
-        $status = $this->getDoctrine()->getRepository(Status::class)->findOneBy(['name' => $request->get("status")]);
-        if ($status == NULL) {
-            $response = [
-                "Code" => 400,
-                "Message" => "Error validating fields: status does not exist"
-            ];
-            return new JsonResponse($response, 400);
-        }
-
+    public function updateAction($id, Request $request){
+        
         $em = $this->getDoctrine()->getManager();
-        $payment = $this->getDoctrine()->getRepository(Payment::class)->find($id);
-        if ($payment == NULL) {
-            $response = [
-                "Code" => 400,
-                "Message" => "Error validating fields: payment does not exist"
-            ];
-            return new JsonResponse($response, 400);
-        }
-        $payment->setStatusId($status->getId());
-        $em->flush();
+        $payment = $em->getRepository(Payment::class)->find($id);
+        $status = $this->getDoctrine()->getRepository(Status::class)->findOneBy(['name' => $request->get("status")]);
+        $form = $this->createForm(PaymentType::class, $payment);
+        $form->submit($payment);
+        $form->handleRequest($request);
 
-        $payment_method = $this->getDoctrine()->getRepository(Payment_Method::class)->findOneBy(['id' => $payment->getPaymentMethodId()]);
-        $company = $this->getDoctrine()->getRepository(Company::class)->findOneBy(['id' => $payment->getCompanyId()]);
-        $date = $payment->getPaymentDate();
-
+        if ($form->isSubmitted()) {
+            $payment->setStatus($status);
+            $em->flush();
+            $date = $payment->getPaymentDate();
+    
             $response = [
                 "id" => $payment->getId(),
                 "payment_date" => $date->format('Y-m-d\TH:i:sP'),
-                "company" => $company->getName(),
+                "company" => $payment->getCompany()->getName(),
                 "amount" => $payment->getAmount(),
-                "payment_method" => $payment_method->getName(),
+                "payment_method" => $payment->getPaymentMethod()->getName(),
                 "external_reference" => $payment->getExternalReference(),
                 "terminal" => $payment->getTerminal(),
-                "status" => $status->getName(),
+                "status" => $payment->getStatus()->getName(),
                 "reference" => $payment->getReference()
             ];
 
-            return new JsonResponse($response, 200);        
+            $serializer = SerializerBuilder::create()->build();
+            $jsonContent = $serializer->serialize($response, 'json');
+
+            return new Response($jsonContent, 200);
+        } else {
+            $string = (string) $form->getErrors(true, false);
+            dump($string);
+        }
+
+        die();  
     }
 
     /**
@@ -159,31 +128,17 @@ class PaymentController extends FOSRestController
     public function getAction(Request $request)
     {
         if (null !== $request->get("payment_method")) {    
-            $payment_method = $this->getDoctrine()->getRepository(Payment_Method::class)->findOneBy(['name' => $request->get("payment_method")]);
-            if ($payment_method == NULL) {
-                $response = [
-                    "Code" => 400,
-                    "Message" => "Error validating fields: payment_method does not exist"
-                ];
-                return new JsonResponse($response, 400);
-            }
-            $payment_method_id = $payment_method->getId();
+            $paymentMethod = $this->getDoctrine()->getRepository(Payment_Method::class)->findOneBy(['name' => $request->get("payment_method")]);
+            $paymentMethod = $paymentMethod->getId();
         } else {
-            $payment_method_id = null;
+            $paymentMethod = null;
         }
 
         if (null !== $request->get("company")) {
             $company = $this->getDoctrine()->getRepository(Company::class)->findOneBy(['name' => $request->get("company")]);
-            if ($company == NULL) {
-                $response = [
-                    "Code" => 400,
-                    "Message" => "Error validating fields: Company does not exist"
-                ];
-                return new JsonResponse($response, 400);
-            }
-            $company_id = $company->getId();
+            $company = $company->getId();
         } else {
-            $company_id = null;
+            $company = null;
         }
         
         if (null !== $request->get("payment_date_from")) {
@@ -218,24 +173,22 @@ class PaymentController extends FOSRestController
         }
 
         $payments = $this->getDoctrine()->getRepository(Payment::class);
-        $payments = $payments->findWithAllFilters($payment_method_id, $company_id, $payment_date_from, $payment_date_until);
+        $payments = $payments->findWithAllFilters($paymentMethod, $company, $payment_date_from, $payment_date_until);
 
         $data = array();
 
         foreach ($payments as $payment) {
             $date = $payment->getPaymentDate();
-            $status = $this->getDoctrine()->getRepository(Status::class)->findOneBy(['id' => $payment->getStatusId()]);
-            $company = $this->getDoctrine()->getRepository(Company::class)->findOneBy(['id' => $payment->getCompanyId()]);
-            $payment_method = $this->getDoctrine()->getRepository(Payment_Method::class)->findOneBy(['id' => $payment->getPaymentMethodId()]);
+
             $pago = array(
                 "id" => $payment->getId(),
                 "payment_date" => $date->format('Y-m-d\TH:i:sP'),
-                "company" => $company->getName(),
+                "company" => $payment->getCompany()->getName(),
                 "amount" => $payment->getAmount(),
-                "payment_method" => $payment_method->getName(),
+                "payment_method" => $payment->getPaymentMethod()->getName(),
                 "external_reference" => $payment->getExternalReference(),
                 "terminal" => $payment->getTerminal(),
-                "status" => $status->getName(),
+                "status" => $payment->getStatus()->getName(),
                 "reference" => $payment->getReference()
             );
             array_push($data, $pago);
@@ -246,8 +199,40 @@ class PaymentController extends FOSRestController
             "data" => $data
         ];
 
-        return new JsonResponse($response, 200);
+        $serializer = SerializerBuilder::create()->build();
+        $jsonContent = $serializer->serialize($response, 'json');
+
+        return new Response($jsonContent, 200);
     }
 
-    
+    /**
+     * @Route("/payments/all", name="getAll_payments")
+     * @Method("GET")
+     */
+    public function getAllAction(Request $request)
+    {
+
+        $pagos = $this->getDoctrine()
+        ->getRepository(Payment::class)
+        ->findAll();
+        $data = array();
+
+        foreach ($pagos as $pago) {
+
+            $pay = array(
+                "id" => $pago->getId(),
+                "company" => $pago->getCompany()->getName(),
+                "payment_method" => $pago->getPaymentMethod()->getName(),
+                "status" => $pago->getStatus()->getName()
+            );
+            array_push($data, $pay);
+        }
+
+        $response = [
+            "total_items" => 1,
+            "data" => $data
+        ];
+
+        return new JsonResponse($response, 200);
+    }
 }

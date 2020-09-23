@@ -3,6 +3,7 @@
 namespace AppBundle\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Validator\Constraints as Assert;
 
 /**
  * Payment
@@ -25,12 +26,14 @@ class Payment
      * @var \DateTime
      *
      * @ORM\Column(name="payment_date", type="datetimetz")
+     * @Assert\NotBlank
      */
     private $paymentDate;
 
     /**
      * @var Company
      * @ORM\ManyToOne(targetEntity="Company")
+     * @Assert\NotBlank
      */
     private $company;
 
@@ -38,12 +41,14 @@ class Payment
      * @var int
      *
      * @ORM\Column(name="amount", type="integer")
+     * @Assert\NotNull
      */
     private $amount;
 
     /**
      * @var Payment_Method
      * @ORM\ManyToOne(targetEntity="Payment_Method")
+     * @Assert\NotNull
      */
     private $paymentMethod;
 
@@ -51,6 +56,7 @@ class Payment
      * @var string
      *
      * @ORM\Column(name="external_reference", type="string", length=255, unique=true)
+     * @Assert\NotBlank
      */
     private $externalReference;
 
@@ -58,12 +64,14 @@ class Payment
      * @var int
      *
      * @ORM\Column(name="terminal", type="integer")
+     * @Assert\NotNull
      */
     private $terminal;
 
     /**
      * @var Status
      * @ORM\ManyToOne(targetEntity="Status")
+     * @Assert\NotBlank
      */
     private $status;
 
@@ -71,6 +79,7 @@ class Payment
      * @var string
      *
      * @ORM\Column(name="reference", type="string", length=255)
+     * @Assert\NotBlank
      */
     private $reference;
 
